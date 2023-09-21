@@ -22,8 +22,7 @@ def conv2d_simple(x, W, b=None, stride=1, pad=0):
     col = im2col(x, (KH, KW), stride, pad, to_matrix=True)
     Weight = Weight.reshape(OC, -1).transpose()
     t = linear(col, Weight, b)
-    y = t.reshape(N, OH, OW, OC).transpose(0, 3, 1, 2)
-    return y
+    return t.reshape(N, OH, OW, OC).transpose(0, 3, 1, 2)
 
 
 def pooling_simple(x, kernel_size, stride=1, pad=0):
@@ -72,10 +71,7 @@ class Conv2d(Function):
                       outsize=(x.shape[2], x.shape[3]))
         # ==== gW ====
         gW = Conv2DGradW(self)(x, gy)
-        # ==== gb ====
-        gb = None
-        if b.data is not None:
-            gb = gy.sum(axis=(0, 2, 3))
+        gb = gy.sum(axis=(0, 2, 3)) if b.data is not None else None
         return gx, gW, gb
 
 
@@ -123,10 +119,7 @@ class Deconv2d(Function):
         # ==== gW ====
         f = Conv2DGradW(self)
         gW = f(gy, x)
-        # ==== gb ====
-        gb = None
-        if b.data is not None:
-            gb = gy.sum(axis=(0, 2, 3))
+        gb = gy.sum(axis=(0, 2, 3)) if b.data is not None else None
         return gx, gW, gb
 
 
@@ -147,8 +140,7 @@ class Conv2DGradW(Function):
 
         col = im2col_array(x, self.kernel_size, self.stride, self.pad,
                            to_matrix=False)
-        gW = xp.tensordot(gy, col, ((0, 2, 3), (0, 4, 5)))
-        return gW
+        return xp.tensordot(gy, col, ((0, 2, 3), (0, 4, 5)))
 
     def backward(self, gys):
         x, gy = self.inputs
@@ -178,8 +170,7 @@ class Pooling(Function):
         N, C, KH, KW, OH, OW = col.shape
         col = col.reshape(N, C, KH * KW, OH, OW)
         self.indexes = col.argmax(axis=2)
-        y = col.max(axis=2)
-        return y
+        return col.max(axis=2)
 
     def backward(self, gy):
         return Pooling2DGrad(self)(gy)
@@ -212,9 +203,14 @@ class Pooling2DGrad(Function):
         gcol = xp.swapaxes(gcol, 2, 4)
         gcol = xp.swapaxes(gcol, 3, 5)
 
-        gx = col2im_array(gcol, (N, C, H, W), self.kernel_size, self.stride,
-                          self.pad, to_matrix=False)
-        return gx
+        return col2im_array(
+            gcol,
+            (N, C, H, W),
+            self.kernel_size,
+            self.stride,
+            self.pad,
+            to_matrix=False,
+        )
 
     def backward(self, ggx):
         f = Pooling2DWithIndexes(self.mpool2d)
@@ -257,8 +253,7 @@ class AveragePooling(Function):
         self.input_shape = x.shape
         col = im2col_array(x, self.kernel_size, self.stride, self.pad,
                            to_matrix=False)
-        y = col.mean(axis=(2, 3))
-        return y
+        return col.mean(axis=(2, 3))
 
     def backward(self, gy):
         # TODO(Koki): This is simple implementation
@@ -267,9 +262,14 @@ class AveragePooling(Function):
         gy /= (KW * KH)
         gcol = broadcast_to(gy.reshape(-1), (KH, KW, N * C * OH * OW))
         gcol = gcol.reshape(KH, KW, N, C, OH, OW).transpose(2, 3, 0, 1, 4, 5)
-        gx = col2im(gcol, self.input_shape, self.kernel_size, self.stride,
-                    self.pad, to_matrix=False)
-        return gx
+        return col2im(
+            gcol,
+            self.input_shape,
+            self.kernel_size,
+            self.stride,
+            self.pad,
+            to_matrix=False,
+        )
 
 
 def average_pooling(x, kernel_size, stride=1, pad=0):
@@ -290,14 +290,19 @@ class Im2col(Function):
 
     def forward(self, x):
         self.input_shape = x.shape
-        y = im2col_array(x, self.kernel_size, self.stride, self.pad,
-                         self.to_matrix)
-        return y
+        return im2col_array(
+            x, self.kernel_size, self.stride, self.pad, self.to_matrix
+        )
 
     def backward(self, gy):
-        gx = col2im(gy, self.input_shape, self.kernel_size, self.stride,
-                    self.pad, self.to_matrix)
-        return gx
+        return col2im(
+            gy,
+            self.input_shape,
+            self.kernel_size,
+            self.stride,
+            self.pad,
+            self.to_matrix,
+        )
 
 
 def im2col(x, kernel_size, stride=1, pad=0, to_matrix=True):
@@ -323,8 +328,7 @@ def im2col(x, kernel_size, stride=1, pad=0, to_matrix=True):
     - `PH` and `PW` are the spatial padding sizes.
     - `OH` and `OW` are the the height and width of the output, respectively.
     """
-    y = Im2col(kernel_size, stride, pad, to_matrix)(x)
-    return y
+    return Im2col(kernel_size, stride, pad, to_matrix)(x)
 
 
 class Col2im(Function):
@@ -337,14 +341,17 @@ class Col2im(Function):
         self.to_matrix = to_matrix
 
     def forward(self, x):
-        y = col2im_array(x, self.input_shape, self.kernel_size, self.stride,
-                         self.pad, self.to_matrix)
-        return y
+        return col2im_array(
+            x,
+            self.input_shape,
+            self.kernel_size,
+            self.stride,
+            self.pad,
+            self.to_matrix,
+        )
 
     def backward(self, gy):
-        gx = im2col(gy, self.kernel_size, self.stride, self.pad,
-                    self.to_matrix)
-        return gx
+        return im2col(gy, self.kernel_size, self.stride, self.pad, self.to_matrix)
 
 
 def col2im(x, input_shape, kernel_size, stride=1, pad=0, to_matrix=True):
@@ -396,17 +403,15 @@ def col2im_array(col, img_shape, kernel_size, stride, pad, to_matrix=True):
 
     xp = cuda.get_array_module(col)
     if xp != np:
-        img = _col2im_gpu(col, SH, SW, PH, PW, H, W)
-        return img
-    else:
-        img = np.zeros((N, C, H + 2 * PH + SH - 1, W + 2 * PW + SW - 1),
-                       dtype=col.dtype)
-        for j in range(KH):
-            j_lim = j + SH * OH
-            for i in range(KW):
-                i_lim = i + SW * OW
-                img[:, :, j:j_lim:SH, i:i_lim:SW] += col[:, :, j, i, :, :]
-        return img[:, :, PH:H + PH, PW:W + PW]
+        return _col2im_gpu(col, SH, SW, PH, PW, H, W)
+    img = np.zeros((N, C, H + 2 * PH + SH - 1, W + 2 * PW + SW - 1),
+                   dtype=col.dtype)
+    for j in range(KH):
+        j_lim = j + SH * OH
+        for i in range(KW):
+            i_lim = i + SW * OW
+            img[:, :, j:j_lim:SH, i:i_lim:SW] += col[:, :, j, i, :, :]
+    return img[:, :, PH:H + PH, PW:W + PW]
 
 
 def _im2col_gpu(img, kernel_size, stride, pad):

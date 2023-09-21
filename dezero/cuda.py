@@ -19,10 +19,7 @@ def get_array_module(x):
     if isinstance(x, Variable):
         x = x.data
 
-    if not gpu_enable:
-        return np
-    xp = cp.get_array_module(x)
-    return xp
+    return np if not gpu_enable else cp.get_array_module(x)
 
 
 def as_numpy(x):

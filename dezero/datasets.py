@@ -154,16 +154,23 @@ class CIFAR10(Dataset):
         assert data_type in ['train', 'test']
         with tarfile.open(filename, 'r:gz') as file:
             for item in file.getmembers():
-                if ('data_batch_{}'.format(idx) in item.name and data_type == 'train') or ('test_batch' in item.name and data_type == 'test'):
+                if (
+                    f'data_batch_{idx}' in item.name
+                    and data_type == 'train'
+                    or ('test_batch' in item.name and data_type == 'test')
+                ):
                     data_dict = pickle.load(file.extractfile(item), encoding='bytes')
-                    data = data_dict[b'data']
-                    return data
+                    return data_dict[b'data']
 
     def _load_label(self, filename, idx, data_type='train'):
         assert data_type in ['train', 'test']
         with tarfile.open(filename, 'r:gz') as file:
             for item in file.getmembers():
-                if ('data_batch_{}'.format(idx) in item.name and data_type == 'train') or ('test_batch' in item.name and data_type == 'test'):
+                if (
+                    f'data_batch_{idx}' in item.name
+                    and data_type == 'train'
+                    or ('test_batch' in item.name and data_type == 'test')
+                ):
                     data_dict = pickle.load(file.extractfile(item), encoding='bytes')
                     return np.array(data_dict[b'labels'])
 
@@ -213,8 +220,7 @@ class CIFAR100(CIFAR10):
             for item in file.getmembers():
                 if data_type in item.name:
                     data_dict = pickle.load(file.extractfile(item), encoding='bytes')
-                    data = data_dict[b'data']
-                    return data
+                    return data_dict[b'data']
 
     def _load_label(self, filename, data_type='train'):
         assert data_type in ['train', 'test']
@@ -266,10 +272,7 @@ class SinCurve(Dataset):
         x = np.linspace(0, 2 * np.pi, num_data)
         noise_range = (-0.05, 0.05)
         noise = np.random.uniform(noise_range[0], noise_range[1], size=x.shape)
-        if self.train:
-            y = np.sin(x) + noise
-        else:
-            y = np.cos(x)
+        y = np.sin(x) + noise if self.train else np.cos(x)
         y = y.astype(dtype)
         self.data = y[:-1][:, np.newaxis]
         self.label = y[1:][:, np.newaxis]
@@ -321,7 +324,7 @@ def save_cache_npz(data, label, filename, train=False):
     if os.path.exists(filepath):
         return
 
-    print("Saving: " + filename + prefix)
+    print(f"Saving: {filename}{prefix}")
     try:
         np.savez_compressed(filepath, data=data, label=label)
     except (Exception, KeyboardInterrupt) as e:

@@ -23,7 +23,7 @@ def _dot_var(v, verbose=False):
     if verbose and v.data is not None:
         if v.name is not None:
             name += ': '
-        name += str(v.shape) + ' ' + str(v.dtype)
+        name += f'{str(v.shape)} {str(v.dtype)}'
 
     return dot_var.format(id(v), name)
 
@@ -93,7 +93,7 @@ def plot_dot_graph(output, verbose=True, to_file='graph.png'):
         f.write(dot_graph)
 
     extension = os.path.splitext(to_file)[1][1:]  # Extension(e.g. png, pdf)
-    cmd = 'dot {} -T {} -o {}'.format(graph_path, extension, to_file)
+    cmd = f'dot {graph_path} -T {extension} -o {to_file}'
     subprocess.run(cmd, shell=True)
 
     # Return the image as a Jupyter Image object, to be displayed in-line.
@@ -120,7 +120,7 @@ def sum_to(x, shape):
     lead = x.ndim - ndim
     lead_axis = tuple(range(lead))
 
-    axis = tuple([i + lead for i, sx in enumerate(shape) if sx == 1])
+    axis = tuple(i + lead for i, sx in enumerate(shape) if sx == 1)
     y = x.sum(lead_axis + axis, keepdims=True)
     if lead > 0:
         y = y.squeeze(lead_axis)
@@ -176,8 +176,7 @@ def max_backward_shape(x, axis):
     else:
         axis = axis
 
-    shape = [s if ax not in axis else 1 for ax, s in enumerate(x.shape)]
-    return shape
+    return [s if ax not in axis else 1 for ax, s in enumerate(x.shape)]
 
 
 # =============================================================================
@@ -217,13 +216,13 @@ def gradient_check(f, x, *args, rtol=1e-4, atol=1e-5, **kwargs):
         print('')
         print('========== FAILED (Gradient Check) ==========')
         print('Numerical Grad')
-        print(' shape: {}'.format(num_grad.shape))
+        print(f' shape: {num_grad.shape}')
         val = str(num_grad.flatten()[:10])
-        print(' values: {} ...'.format(val[1:-1]))
+        print(f' values: {val[1:-1]} ...')
         print('Backprop Grad')
-        print(' shape: {}'.format(bp_grad.shape))
+        print(f' shape: {bp_grad.shape}')
         val = str(bp_grad.flatten()[:10])
-        print(' values: {} ...'.format(val[1:-1]))
+        print(f' values: {val[1:-1]} ...')
     return res
 
 
@@ -244,10 +243,7 @@ def numerical_grad(f, x, *args, **kwargs):
 
     x = x.data if isinstance(x, Variable) else x
     xp = cuda.get_array_module(x)
-    if xp is not np:
-        np_x = cuda.as_numpy(x)
-    else:
-        np_x = x
+    np_x = cuda.as_numpy(x) if xp is not np else x
     grad = xp.zeros_like(x)
 
     it = np.nditer(np_x, flags=['multi_index'], op_flags=['readwrite'])
@@ -316,8 +312,8 @@ def show_progress(block_num, block_size, total_size):
     downloaded = block_num * block_size
     p = downloaded / total_size * 100
     i = int(downloaded / total_size * 30)
-    if p >= 100.0: p = 100.0
-    if i >= 30: i = 30
+    p = min(p, 100.0)
+    i = min(i, 30)
     bar = "#" * i + "." * (30 - i)
     print(bar_template.format(bar, p), end='')
 
@@ -345,7 +341,7 @@ def get_file(url, file_name=None):
     if os.path.exists(file_path):
         return file_path
 
-    print("Downloading: " + file_name)
+    print(f"Downloading: {file_name}")
     try:
         urllib.request.urlretrieve(url, file_path, show_progress)
     except (Exception, KeyboardInterrupt) as e:
