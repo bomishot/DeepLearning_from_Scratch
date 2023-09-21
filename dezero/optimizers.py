@@ -47,9 +47,7 @@ class ClipGrad:
         self.max_norm = max_norm
 
     def __call__(self, params):
-        total_norm = 0
-        for param in params:
-            total_norm += (param.grad.data ** 2).sum()
+        total_norm = sum((param.grad.data ** 2).sum() for param in params)
         total_norm = math.sqrt(float(total_norm))
 
         rate = self.max_norm / (total_norm + 1e-6)
@@ -65,8 +63,7 @@ class FreezeParam:
             if isinstance(l, Parameter):
                 self.freeze_params.append(l)
             else:
-                for p in l.params():
-                    self.freeze_params.append(p)
+                self.freeze_params.extend(iter(l.params()))
 
     def __call__(self, params):
         for p in self.freeze_params:

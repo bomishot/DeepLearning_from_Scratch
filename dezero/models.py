@@ -19,7 +19,7 @@ class Sequential(Model):
         super().__init__()
         self.layers = []
         for i, layer in enumerate(layers):
-            setattr(self, 'l' + str(i), layer)
+            setattr(self, f'l{str(i)}', layer)
             self.layers.append(layer)
 
     def forward(self, x):
@@ -36,7 +36,7 @@ class MLP(Model):
 
         for i, out_size in enumerate(fc_output_sizes):
             layer = L.Linear(out_size)
-            setattr(self, 'l' + str(i), layer)
+            setattr(self, f'l{str(i)}', layer)
             self.layers.append(layer)
 
     def forward(self, x):
@@ -127,8 +127,9 @@ class ResNet(Model):
         elif n_layers == 152:
             block = [3, 8, 36, 3]
         else:
-            raise ValueError('The n_layers argument should be either 50, 101,'
-                             ' or 152, but {} was given.'.format(n_layers))
+            raise ValueError(
+                f'The n_layers argument should be either 50, 101, or 152, but {n_layers} was given.'
+            )
 
         self.conv1 = L.Conv2d(64, 7, 2, 3)
         self.bn1 = L.BatchNorm()
@@ -185,7 +186,7 @@ class BuildingBlock(Layer):
                              downsample_fb)
         self._forward = ['a']
         for i in range(n_layers - 1):
-            name = 'b{}'.format(i + 1)
+            name = f'b{i + 1}'
             bottleneck = BottleneckB(out_channels, mid_channels)
             setattr(self, name, bottleneck)
             self._forward.append(name)

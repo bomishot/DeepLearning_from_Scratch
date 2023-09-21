@@ -54,7 +54,7 @@ class Layer:
     def _flatten_params(self, params_dict, parent_key=""):
         for name in self._params:
             obj = self.__dict__[name]
-            key = parent_key + '/' + name if parent_key else name
+            key = f'{parent_key}/{name}' if parent_key else name
 
             if isinstance(obj, Layer):
                 obj._flatten_params(params_dict, key)
@@ -113,8 +113,7 @@ class Linear(Layer):
             xp = cuda.get_array_module(x)
             self._init_W(xp)
 
-        y = F.linear(x, self.W, self.b)
-        return y
+        return F.linear(x, self.W, self.b)
 
 
 class Conv2d(Layer):
@@ -161,8 +160,7 @@ class Conv2d(Layer):
             xp = cuda.get_array_module(x)
             self._init_W(xp)
 
-        y = F.conv2d(x, self.W, self.b, self.stride, self.pad)
-        return y
+        return F.conv2d(x, self.W, self.b, self.stride, self.pad)
 
 
 class Deconv2d(Layer):
@@ -209,8 +207,7 @@ class Deconv2d(Layer):
             xp = cuda.get_array_module(x)
             self._init_W(xp)
 
-        y = F.deconv2d(x, self.W, self.b, self.stride, self.pad)
-        return y
+        return F.deconv2d(x, self.W, self.b, self.stride, self.pad)
 
 
 # =============================================================================
@@ -273,11 +270,7 @@ class LSTM(Layer):
             o = F.sigmoid(self.x2o(x) + self.h2o(self.h))
             u = F.tanh(self.x2u(x) + self.h2u(self.h))
 
-        if self.c is None:
-            c_new = (i * u)
-        else:
-            c_new = (f * self.c) + (i * u)
-
+        c_new = (i * u) if self.c is None else (f * self.c) + (i * u)
         h_new = o * F.tanh(c_new)
 
         self.h, self.c = h_new, c_new
@@ -293,8 +286,7 @@ class EmbedID(Layer):
         self.W = Parameter(np.random.randn(in_size, out_size), name='W')
 
     def __call__(self, x):
-        y = self.W[x]
-        return y
+        return self.W[x]
 
 
 class BatchNorm(Layer):

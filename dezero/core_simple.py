@@ -39,7 +39,7 @@ class Variable:
     def __init__(self, data, name=None):
         if data is not None:
             if not isinstance(data, np.ndarray):
-                raise TypeError('{} is not supported'.format(type(data)))
+                raise TypeError(f'{type(data)} is not supported')
 
         self.data = data
         self.name = name
@@ -70,7 +70,7 @@ class Variable:
         if self.data is None:
             return 'variable(None)'
         p = str(self.data).replace('\n', '\n' + ' ' * 9)
-        return 'variable(' + p + ')'
+        return f'variable({p})'
 
     def set_creator(self, func):
         self.creator = func
@@ -102,11 +102,7 @@ class Variable:
                 gxs = (gxs,)
 
             for x, gx in zip(f.inputs, gxs):
-                if x.grad is None:
-                    x.grad = gx
-                else:
-                    x.grad = x.grad + gx
-
+                x.grad = gx if x.grad is None else x.grad + gx
                 if x.creator is not None:
                     add_func(x.creator)
 
@@ -116,15 +112,11 @@ class Variable:
 
 
 def as_variable(obj):
-    if isinstance(obj, Variable):
-        return obj
-    return Variable(obj)
+    return obj if isinstance(obj, Variable) else Variable(obj)
 
 
 def as_array(x):
-    if np.isscalar(x):
-        return np.array(x)
-    return x
+    return np.array(x) if np.isscalar(x) else x
 
 
 class Function:
@@ -138,7 +130,7 @@ class Function:
         outputs = [Variable(as_array(y)) for y in ys]
 
         if Config.enable_backprop:
-            self.generation = max([x.generation for x in inputs])
+            self.generation = max(x.generation for x in inputs)
             for output in outputs:
                 output.set_creator(self)
             self.inputs = inputs
@@ -158,8 +150,7 @@ class Function:
 # =============================================================================
 class Add(Function):
     def forward(self, x0, x1):
-        y = x0 + x1
-        return y
+        return x0 + x1
 
     def backward(self, gy):
         return gy, gy
@@ -172,8 +163,7 @@ def add(x0, x1):
 
 class Mul(Function):
     def forward(self, x0, x1):
-        y = x0 * x1
-        return y
+        return x0 * x1
 
     def backward(self, gy):
         x0, x1 = self.inputs[0].data, self.inputs[1].data
@@ -199,8 +189,7 @@ def neg(x):
 
 class Sub(Function):
     def forward(self, x0, x1):
-        y = x0 - x1
-        return y
+        return x0 - x1
 
     def backward(self, gy):
         return gy, -gy
@@ -218,8 +207,7 @@ def rsub(x0, x1):
 
 class Div(Function):
     def forward(self, x0, x1):
-        y = x0 / x1
-        return y
+        return x0 / x1
 
     def backward(self, gy):
         x0, x1 = self.inputs[0].data, self.inputs[1].data
@@ -243,15 +231,13 @@ class Pow(Function):
         self.c = c
 
     def forward(self, x):
-        y = x ** self.c
-        return y
+        return x ** self.c
 
     def backward(self, gy):
         x = self.inputs[0].data
         c = self.c
 
-        gx = c * x ** (c - 1) * gy
-        return gx
+        return c * x ** (c - 1) * gy
 
 
 def pow(x, c):

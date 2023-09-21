@@ -30,13 +30,12 @@ class Convert:
         self.mode = mode
 
     def __call__(self, img):
-        if self.mode == 'BGR':
-            img = img.convert('RGB')
-            r, g, b = img.split()
-            img = Image.merge('RGB', (b, g, r))
-            return img
-        else:
+        if self.mode != 'BGR':
             return img.convert(self.mode)
+        img = img.convert('RGB')
+        r, g, b = img.split()
+        img = Image.merge('RGB', (b, g, r))
+        return img
 
 
 class Resize:
